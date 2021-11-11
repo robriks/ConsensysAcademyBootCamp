@@ -17,8 +17,18 @@ contract MyTest {
   /// #sender: account-1
   /// #value: 100
   function checkSenderAndValue() public payable {
+      address seller = TestsAccounts.getAccount(1);
       // account index varies 0-9, value is in wei
-      Assert.equal(msg.sender, TestsAccounts.getAccount(1), "Invalid sender");
+      Assert.equal(msg.sender, seller, "Invalid sender");
       Assert.equal(msg.value, 100, "Invalid value");
+  }
+
+  function setInFoo() public {
+    /// #sender: account-2
+    foo.set(69);
+
+    address setter = TestsAccounts.getAccount(2);
+
+    Assert.notEqual(msg.sender, setter, "didnt work");
   }
 }
