@@ -594,11 +594,11 @@ contract HornMarketplace_test {
 
     // @dev Mints a fresh Horn NFT from the seller contract for testing purposes
     // @param serialNumberCounter is incremented every time this function is called so that the nonDuplicateMint modifier hashes make and serial data without collision
-    /// #sender: account-1
     function mintAndListFreshTestHorn() public returns (uint) {
         serialNumberCounter++;
 
-        uint currentHornId = mkt.mintThenListNewHornNFT(
+        /// #sender: account-1
+        uint currentHornId = market.mintThenListNewHornNFT( // MAKE SURE ABOVE LINE WORKS EVEN WITH UINT ASSIGNMENT ON THIS LINE ++ IF THEY DONT WORK INSIDE FUNCTIONS JUST DELETE THESE HELPER FUNCTIONS AND MOVE THE WORKING LOGIC TO THE TEST FUNCTIONS
             "Berg",
             "Double",
             "Geyer", 
@@ -611,11 +611,11 @@ contract HornMarketplace_test {
     
     // @dev Mints but does not list a fresh Horn NFT from the seller for testing purposes
     // @param serialNumberCounter is incremented every time this function is called so that the nonDuplicateMint modifier hashes make and serial data without collision
-    /// #sender: account-1
     function mintButDontListFreshTestHorn() public returns (uint) {
         serialNumberCounter++;
 
-        uint currentHornId = mkt.mintButDontListNewHornNFT(
+        /// #sender: account-1
+        uint currentHornId = market.mintButDontListNewHornNFT(
             "Berg",
             "Double",
             "Geyer", 
@@ -625,50 +625,40 @@ contract HornMarketplace_test {
         return currentHornId;
     }
 
-    // @dev Helper function intended to throw on execution as dry Ether is rejected by the marketplace contract
-    /// #sender: account-0
-    /// #value: 1000000000000000000
-    function sendEtherTest() public payable {
-        address(market).call("");
-    }
-}
-
-
-
-contract Seller {
-
-
-    // @dev Prepares a given Horn NFT for markHornDelivered and transfer testing
-    function prepareForTransfer(uint hornId) public returns (string memory) {
-        string memory testShipTo = "21 Mil St. BTCidatel, Metaverse 69696";
-        
-        mkt.markHornShipped(hornId, testShipTo);
-
-        return testShipTo;
-    }
-}
-
-
-contract Buyer {
-    
-    HornMarketplace mkt1;
-
-    constructor() {
-        mkt1 = HornMarketplace(DeployedAddresses.HornMarketplace());
-    }
     // @dev Prepares a given Horn NFT for markShipped testing
     // @param This function is payable and must be given a msg.value to carry out the market.purchaseHornByHornId line
     function prepareForShipped(uint hornId) public payable returns (string memory) {
         string memory testShipTo = "21 Mil St. BTCidatel, Metaverse 69696";
 
-        mkt1.purchaseHornByHornId(hornId, testShipTo); // {value:} ?
+        /// #sender: account-2
+        /// #value: 420
+        market.purchaseHornByHornId(hornId, testShipTo);
 
         return testShipTo;
     }
 
+    // @dev Prepares a given Horn NFT for markHornDelivered and transfer testing
+    function prepareForTransfer(uint hornId) public returns (string memory) {
+        string memory testShipTo = "21 Mil St. BTCidatel, Metaverse 69696";
+        
+        /// #sender: account-1
+        market.markHornShipped(hornId, testShipTo);
+
+        return testShipTo;
+    }
+
+    // @dev Finalizes the transfer of a given Horn NFT upon delivery
     function deliveredAndTransfer(uint hornId) public returns (uint) {
-        uint paymentAmt = mkt1.markHornDeliveredAndOwnershipTransferred(hornId);
+        /// #sender: account-2
+        uint paymentAmt = market.markHornDeliveredAndOwnershipTransferred(hornId);
 
         return paymentAmt;
+    }
+
+    // @dev Helper function intended to throw on execution as dry Ether is rejected by the marketplace contract
+    function sendEtherTest() public payable {
+    /// #sender: account-0
+    /// #value: 1000000000000000000
+        address(market).call("");
     }
 }
