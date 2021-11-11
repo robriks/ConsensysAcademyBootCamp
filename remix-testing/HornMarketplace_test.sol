@@ -87,8 +87,14 @@ contract HornMarketplace_test {
         Assert.equal(returnedStyle, expectedStyle, "Style error");
         // Check that serialNumber was properly set
         Assert.equal(returnedSerialNumber, defaultSerialNumber, "SerialNumber error");
-        // Check status of the given index of struct mapping horns[__hornId]
-        Assert.isTrue(testGetStatusOfHornById(returnedHornId, 0), "HornStatus enum returned does not match expected ListedForSale value");
+
+        // @dev Check status of the given index of struct mapping horns[__hornId]        
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 0, "HornStatus enum returned does not match expected ListedForSale value");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
+
         // Check that currentOwner of NFT was set to minter, in this case the seller address
         Assert.equal(returnedCurrentOwner, expectedCurrentOwner, "Horn NFT was minted to a different address than the seller address, check execution of mint and the currentOwner attribute");
         // Check currentOwner in mapping vs struct attribute
@@ -137,8 +143,14 @@ contract HornMarketplace_test {
         Assert.equal(returnedSerialNumber, defaultSerialNumber, "SerialNumber error");
         // Check that listPrice was properly set
         Assert.equal(returnedListPrice, defaultListPrice, "Listprice error");
-        // Check that HornStatus was set to OwnedNotForSale
-        Assert.isTrue(testGetStatusOfHornById(returnedHornId, 3), "HornStatus was not successfully set to OwnedNotForSale, be sure nothing is throwing beforehand");
+
+        // @dev Check that HornStatus was set to OwnedNotForSale aka int8 == 3
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 3, "HornStatus was not successfully set to OwnedNotForSale, be sure nothing is throwing beforehand");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
+
         // Check that currentOwner was set to this contract's address(this)
         Assert.equal(returnedCurrentOwner, expectedCurrentOwner, "The test contract minted the Horn NFT and should be currentOwner but isn't, check execution of mintButDontListNewHornNFT(");
     }
@@ -164,8 +176,13 @@ contract HornMarketplace_test {
         // Assert.tokenURI
         // Check that listPrice was updated
         Assert.equal(returnedListPrice, newListPrice, "List price of the new listing of an already existing NFT did not update properly, check execution of listExistingHornNFT()");
-        // Check that HornStatus was updated to ListedForSale
-        Assert.isTrue(testGetStatusOfHornById(hornId, 0), "HornStatus was not successfully changed to ListedForSale");
+        
+        // @dev Check that HornStatus was updated to ListedForSale
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 0, "HornStatus was not successfully changed to ListedForSale");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
     }   // Javascript test for event emission
 
 
@@ -176,8 +193,8 @@ contract HornMarketplace_test {
         uint hornId = mintAndListFreshTestHorn();
 
         string memory testAddress = "Ju St. Testing, Purchase Attempt New York, 11111";
-        // This line uses this contract to buy, to provide some variety in testing
-        market.purchaseHornByHornId(hornId, testAddress); // {value:}
+        // This line uses this contract to buy, to test if contracts can purchase as well as EOA users
+        market.purchaseHornByHornId(hornId, testAddress);
 
         // @param Seller address referenced because depositsOf refers to the payee, in this case the seller
         uint returnedDeposits = market.getEscrowDepositValue(seller);
@@ -192,10 +209,17 @@ contract HornMarketplace_test {
         Assert.equal(returnedShippingAddress, testAddress, "Shipping address returned by shippingAddresses[] mapping does not match the test address provided to purchaseHornByHornId function");
         // Check that buyers mapping was updated to msg.sender, in this case address(this)
         Assert.equal(returnedBuyerAddress, address(this), "Address returned by market buyers[] mapping does not match the one that purchased the instrument, in this case this contract");
-        // Check that status was updated to PaidFor
-        Assert.isTrue(testGetStatusOfHornById(hornId, 1), "HornStatus was not successfully updated to PaidFor, check execution of purchaseHornByHornId()");
+        
+        
+        // @dev Check that status was updated to PaidFor
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 1, "HornStatus was not successfully updated to PaidFor, check execution of purchaseHornByHornId()");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
+        
         // Check that hornId was deleted from hornsForSale[] uint[] array
-        Assert.isZero(shouldHaveBeenDeleted, "Value returned by hornsForSale[] uint[] array was not 0, meaning it was not properly deleted upon execution of purchase");
+        Assert.equal(shouldHaveBeenDeleted, 0, "Value returned by hornsForSale[] uint[] array was not 0, meaning it was not properly deleted upon execution of purchase");
         // javascript tests for event emission
     }
 
@@ -203,8 +227,8 @@ contract HornMarketplace_test {
     function testMarkHornShipped() public {
         uint hornId = mintAndListFreshTestHorn();
 
-        buyer.prepareForShipped(hornId); // {value: }
-        seller.prepareForTransfer(hornId);
+        prepareForShipped(hornId); // {value: }
+        prepareForTransfer(hornId);
         
         // Check that approval for __hornId given to marketplace contract was carried out
         address returnedApprovedAddressForHornId = market.getApprovedToSpend(hornId);
@@ -212,8 +236,12 @@ contract HornMarketplace_test {
         
         Assert.equal(returnedApprovedAddressForHornId, expectedApprovedAddressForHornId, "Returned approved address for tokenId doesn't match expected address, check execution of Approve()");
 
-        // Use helper function to check that status was updated to Shipped
-        Assert.isTrue(testGetStatusOfHornById(hornId, 2), "HornStatus was not successfully updated to Shipped, check execution of markHornShipped()");
+        // Use helper function to check that status was updated to Shipped aka int8 = 2
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 2, "HornStatus was not successfully updated to Shipped, check execution of markHornShipped()");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
     } // javascript version should expect hornShipped event emission with correct address
 
     // @dev Attempts to mark shipped with a wrong address
@@ -222,65 +250,79 @@ contract HornMarketplace_test {
         uint hornId = mintAndListFreshTestHorn();
 
         // Set correct address to prepare for comparison with the mistake address later entered by seller
-        // string memory realShipTo = buyer.prepareForShipped(hornId); // {value: } DELETE WHEN THIS TEST FOR EXCEPTION WORKS
+        // string memory realShipTo = prepareForShipped(hornId); // DELETE WHEN THIS TEST FOR EXCEPTION WORKS
 
         // Feed in a wrong address to ensure require() line prevents seller from shipping to the wrong place
         string memory mistakeShipTo = "21 Million Silk Rd. Darknet, Metaverse 66666";
         try market.markHornShipped(_hornId, mistakeShipTo) {
-            Assert.ok(false, "morelater");
+            Assert.ok(false, "Against all odds, a seller somehow managed to ship a horn to the wrong address");
         } catch Error(string memory reason) {
             return (false);
         }
 
-        // Use helper function to check that status is still PaidFor and didn't execute change to Shipped
-        Assert.isTrue(testGetStatusOfHornById(hornId, 1), "HornStatus was somehow changed, check execution of markHornShipped");
+        // @param Use helper function to check that status is still PaidFor aka (int8 = 1) and therefore didn't execute change to Shipped
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 1, "HornStatus was somehow changed, check execution of markHornShipped");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
+
+        // Assert.isTrue(testGetStatusOfHornById(hornId, 1), "HornStatus was somehow changed, check execution of markHornShipped"); DELETE WHEN THIS TEST FOR EXCEPTION WORKS
         // Ascertain mistakenShippingAddress is falsy and didn't execute markHornShipped
         // Assert.isFalse(mistakenShippingAddress, "Against all odds, a seller somehow managed to ship a horn to the wrong address");
     }
-    // @dev Helper function that is intended to throw on execution due to shippingAddress mismatch
-    function wrongAddressThrows() public {
-        uint _hornId = 1;
-        // Feed in a wrong address to ensure require() line prevents seller from shipping to the wrong place
-        string memory mistakeShipTo = "21 Million Silk Rd. Darknet, Metaverse 66666";
-        market.markHornShipped(_hornId, mistakeShipTo);
-    }
+
+    // DELETE NEXT 7 LINES WHEN EXCEPTION TEST ABOVE IS WORKING
+    // // @dev Helper function that is intended to throw on execution due to shippingAddress mismatch
+    // function wrongAddressThrows() public {
+    //     uint _hornId = 1;
+    //     // Feed in a wrong address to ensure require() line prevents seller from shipping to the wrong place
+    //     string memory mistakeShipTo = "21 Million Silk Rd. Darknet, Metaverse 66666";
+    //     market.markHornShipped(_hornId, mistakeShipTo);
+    // }
+
 
     // @dev Ensure markHornDeliveredAndOwnershipTransferred is working as intended
     function testMarkHornDeliveredAndOwnershipTransferred() public {
         // Set conditions of exchange up to the point where markHornDeliveredAndOwnershipTransferred would be called
         uint hornId = mintAndListFreshTestHorn();
 
-        buyer.prepareForShipped(hornId); // {value: listPrice} 
+        prepareForShipped(hornId);
 
-        uint returnedPaymentAmt = buyer.deliveredAndTransfer(hornId);
+        uint returnedPaymentAmt = deliveredAndTransfer(hornId);
         uint hornListPrice = market.getListPriceByHornId(hornId);
 
         address payable currentOwnerViaMapping = market.getCurrentOwnerByMapping(hornId);
         
         address returnedBuyerOfHornId = market.buyers(hornId);
-        address expectedBuyerOfHornIdShouldBe0 = address(0); // can address(0) be payable?
+        address expectedBuyerOfHornIdShouldBe0 = address(0); // should address(0) be payable?
 
-        string memory returnedShippingAddressesString = market.shippingAddresses(address(buyer));
+        string memory returnedShippingAddressesString = market.shippingAddresses(buyer);
         string memory expectedShippingAddressesStringShouldBeEmpty = "";
 
         
         uint escrowBalanceOfSeller = market.getEscrowDepositValue(seller);
         //@notice ERC721 balanceOf() method actually returns a uint[] array, so in case of multiple NFTs the following line would need to be reworked to loop through the returned array
-        uint tokenIdTransferredToBuyer = market.getBalanceOf(address(buyer));
+        uint tokenIdTransferredToBuyer = market.getBalanceOf(buyer);
 
         // Check escrow.withdraw(horns[__hornId].currentOwner) was properly sent to the seller
         Assert.equal(returnedPaymentAmt, hornListPrice, "Payment amount returned by markHornDeliveredAndOwnershipTransferred() does not match Horn NFT listPrice attribute");
-        Assert.isZero(escrowBalanceOfSeller, "Escrow contract was not properly drained of funds intended for seller"); //expects depositsOf() the payee aka seller to have been drained
+        Assert.equal(escrowBalanceOfSeller, 0, "Escrow contract was not properly drained of funds intended for seller"); //expects depositsOf() the payee aka seller to have been drained to less than 1, which = 0
         
         // Check that buyers[hornId] was set to address(0)
         Assert.equal(returnedBuyerOfHornId, expectedBuyerOfHornIdShouldBe0, "Address returned by buyers[hornId] was not successfully zeroed out");
         // Check that shippingAddresses[msg.sender], here msg.sender is instead represented by buyer, was set to ""
         Assert.equal(returnedShippingAddressesString, expectedShippingAddressesStringShouldBeEmpty, "String returned by shippingAddresses[buyer] was not successfully zeroed out");
 
-        // Check that HornStatus status of hornNFT was correctly updated to OwnedNotForSale (== 3)
-        Assert.isTrue(testGetStatusOfHornById(hornId, 3), "HornStatus of Horn NFT was not correctly updated to OwnedNotForSale");
+        // @dev Check that HornStatus status of hornNFT was correctly updated to OwnedNotForSale (== 3)
+        try market.getStatusOfHornByHornId(hornId) returns (int8 s) { // may need to change getStatusOfHorn function to wrap enum in uint8
+            Assert.equal(s, 3, "HornStatus of Horn NFT was not correctly updated to OwnedNotForSale");
+        } catch (bytes memory /* lowLevelData */) {
+            return (false);
+        }
+
         // Check that currentOwner was correctly updated to buyer
-        Assert.equal(currentOwnerViaMapping, address(buyer), "CurrentOwner of Horn NFT as returned by storage mapping does not match expected address");
+        Assert.equal(currentOwnerViaMapping, buyer, "CurrentOwner of Horn NFT as returned by storage mapping does not match expected address");
         // Check that currentOwner is consistent in both the mapping and the struct attribute
         Assert.isTrue(testGetCurrentOwnerMappingAgainstStructAttributeByHornId(hornId), "CurrentOwner returned by mapping does not match struct attribute");
 
@@ -294,8 +336,8 @@ contract HornMarketplace_test {
     function testOnlyBuyerWhoPaid() public {
         uint hornId = mintAndListFreshTestHorn();
 
-        buyer.prepareForShipped(hornId); // {value:}
-        seller.prepareForTransfer(hornId);
+        prepareForShipped(hornId);
+        prepareForTransfer(hornId);
 
         bool thieveryAttempt;
         (thieveryAttempt, ) = address(this).call(abi.encodePacked(this.noPayNoWay.selector));
@@ -309,7 +351,7 @@ contract HornMarketplace_test {
 
     // @dev Attempts to call listExistingHornNFT() from non-seller address who isn't currentOwner of the horn NFT
     function testOnlySellerViaList() public {
-        seller.mintButDontListFreshTestHorn();
+        mintButDontListFreshTestHorn();
 
         // @dev Impersonator tries to sell someone else's NFT for 1 ether
         // @notice Following function is called by an account that isn't the same one who minted
@@ -326,7 +368,7 @@ contract HornMarketplace_test {
     function testOnlySellerViaMarkShipped() public {
         uint hornId = mintAndListFreshTestHorn();
 
-        /*string memory testShipTo = */buyer.prepareForShipped(hornId); // {value:} DELETE COMMENTS WHEN THIS TEST WORKS
+        /*string memory testShipTo = */prepareForShipped(hornId); // DELETE COMMENTS WHEN THIS TEST WORKS
 
         bool shipperImpersonation;
         (shipperImpersonation, ) = address(this).call(abi.encodePacked(this.noShippingForYou.selector));
@@ -400,7 +442,7 @@ contract HornMarketplace_test {
     function testShipped() public {
         uint hornId = mintAndListFreshTestHorn();
 
-        buyer.prepareForShipped(hornId); // {value: listPrice}
+        prepareForShipped(hornId);
 
         bool notShippedYet;
         (notShippedYet, ) = address(this).call(abi.encodePacked(this.tooEarly.selector));
@@ -468,7 +510,7 @@ contract HornMarketplace_test {
         // set conditions to identify an NFT that is PaidFor
         uint hornId = mintAndListFreshTestHorn();
 
-        buyer.prepareForShipped(hornId); // {value:}
+        prepareForShipped(hornId);
 
         bool tooLateTakeTheMoney;
         (tooLateTakeTheMoney, ) = address(this).call(abi.encodePacked(this.throwRefund.selector));
@@ -480,8 +522,8 @@ contract HornMarketplace_test {
         // set conditions to identify an NFT that is Shipped
         uint hornId = mintAndListFreshTestHorn();
 
-        buyer.prepareForShipped(hornId); // {value:}
-        seller.prepareForTransfer(hornId);
+        prepareForShipped(hornId);
+        prepareForTransfer(hornId);
 
         bool youAlreadyShippedItYouScammer;
         (youAlreadyShippedItYouScammer, ) = address(this).call(abi.encodePacked(this.throwRefund.selector));
@@ -525,9 +567,9 @@ contract HornMarketplace_test {
             defaultSerialNumber
         );
         // @dev Purchases the listed firstTestHornId and thereby 'deletes' it from the hornsForSale[] uint[] array by resetting its value to 0
-        buyer.prepareForShipped(firstTestHornId); // {value: listPrice}
+        prepareForShipped(firstTestHornId);
         uint secondTestHornId = mintAndListFreshTestHorn(); // Id should == 4
-        buyer.prepareForShipped(secondTestHornId); // {value: listPrice}
+        prepareForShipped(secondTestHornId);
         // @dev Purchases the listed secondTestHornId and thereby 'deletes' it from the hornsForSale[] uint[] array by resetting its value to 0
         
         uint[] memory returnedIds = uint[](market.getCurrentHornsForSale());
@@ -571,6 +613,7 @@ contract HornMarketplace_test {
         require(returnedEnum == expectedEnum, "HornStatus enum uint returned by marketplace contract does not match the expected one given");
         return true;
     } 
+
     // @dev Test the current balance of deposits for given address in escrow contract against market getter function
     function testGetEscrowDepositValue(address payee) public {
         uint returnedDepositValue = market.getEscrowDepositValue(payee);
